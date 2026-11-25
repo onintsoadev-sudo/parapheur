@@ -1,0 +1,24 @@
+{
+  "name": "e-parapheur-backend",
+  "version": "1.0.0",
+  "description": "Backend Express.js pour e-parapheur (converti depuis Laravel)",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "migrate": "node src/config/migrate.js",
+    "seed": "node src/config/seed.js"
+  },
+  "keywords": ["express", "parapheur", "api"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.15",
+    "pg": "^8.13.0"
+  }
+}
