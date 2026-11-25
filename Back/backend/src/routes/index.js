@@ -17,6 +17,7 @@ router.get('/userCount', auth, authCtrl.userCount);
 router.post('/register', auth, authCtrl.register);
 router.get('/usersList', auth, authCtrl.usersList);
 router.post('/login', authCtrl.login);
+router.get('/accounts', authCtrl.accounts);
 router.post('/logout', auth, authCtrl.logout);
 router.post('/updateStatus/:user_id', auth, authCtrl.updateStatus);
 router.post('/updateUser/password', auth, authCtrl.updateUserPassword);

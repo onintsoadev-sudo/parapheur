@@ -1,4 +1,4 @@
-import { FaKey, FaEnvelope, FaEye, FaEyeSlash, FaShieldAlt } from "react-icons/fa";
+import { FaKey, FaEnvelope, FaEye, FaEyeSlash, FaShieldAlt, FaUsers, FaTimes, FaUserCheck } from "react-icons/fa";
 import { userContext } from "../components/ContextWrapper";
 import { useContext, useEffect, useRef, useState } from "react";
 import axiosRequest from "../axiosClient/axiosClient";
@@ -15,6 +15,9 @@ function Login() {
   const [formData, setFormData] = useState({});
   const [token] = useState(localStorage.getItem("ACCESS_TOKEN"));
   const [showPassword, setShowPassword] = useState(false);
+  const [showAccounts, setShowAccounts] = useState(false);
+  const [accounts, setAccounts] = useState(null);
+  const [accountsLoading, setAccountsLoading] = useState(false);
 
   const checkeds = useRef(null);
   const togglePassword = () => {
@@ -88,6 +91,28 @@ function Login() {
       }
     }
   }, [user]);
+
+  const openAccounts = async () => {
+    setShowAccounts(true);
+    if (accounts) return;
+    setAccountsLoading(true);
+    try {
+      const { data } = await axiosRequest.get("/accounts");
+      setAccounts(Array.isArray(data) ? data : []);
+    } catch {
+      toast.error("Impossible de charger la liste des comptes");
+      setShowAccounts(false);
+    } finally {
+      setAccountsLoading(false);
+    }
+  };
+
+  const useAccount = (account) => {
+    setFormData({ email: account.email, password: account.password || "" });
+    setShowPassword(Boolean(account.password));
+    setShowAccounts(false);
+    toast.info(`Identifiants de ${account.email} pre-remplis`);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -169,6 +194,7 @@ function Login() {
                 <input
                   id="email"
                   onChange={handleChange}
+                  value={formData.email || ""}
                   type="text"
                   name="email"
                   placeholder="votre.email@exemple.com"
@@ -185,6 +211,7 @@ function Login() {
                 <input
                   id="password"
                   onChange={handleChange}
+                  value={formData.password || ""}
                   type={showPassword ? "text" : "password"}
                   ref={checkeds}
                   name="password"
@@ -223,13 +250,86 @@ function Login() {
             </button>
           </form>
 
-          <p className="mt-8 text-center text-sm text-slate-500">
+          <button
+            type="button"
+            onClick={openAccounts}
+            className="mt-5 w-full flex items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50 py-3 text-sm font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
+          >
+            <FaUsers size={15} /> Voir les comptes de démonstration
+          </button>
+
+          <p className="mt-6 text-center text-sm text-slate-500">
             <Link to="/" className="text-brand-600 font-medium hover:underline">
               ← Retour à l'accueil
             </Link>
           </p>
         </div>
       </div>
+
+      {/* Modal : liste des comptes */}
+      {showAccounts && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl bg-white shadow-2xl overflow-hidden">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Comptes de démonstration</h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  {accountsLoading ? "Chargement…" : `${accounts ? accounts.length : 0} compte(s) en base`} — cliquez sur un compte pour pré-remplir le formulaire.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAccounts(false)}
+                className="text-slate-400 hover:text-slate-700 transition-colors"
+                aria-label="Fermer"
+              >
+                <FaTimes size={18} />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-4">
+              {accountsLoading && <p className="text-center text-sm text-slate-500 py-6">Chargement des comptes…</p>}
+
+              {!accountsLoading && accounts && accounts.length === 0 && (
+                <p className="text-center text-sm text-slate-500 py-6">Aucun compte trouvé.</p>
+              )}
+
+              {!accountsLoading && accounts && accounts.length > 0 && (
+                <ul className="space-y-2">
+                  {accounts.map((account) => (
+                    <li key={account.id}>
+                      <button
+                        type="button"
+                        onClick={() => useAccount(account)}
+                        className="w-full text-left rounded-xl border border-slate-200 hover:border-brand-400 hover:bg-brand-50/60 transition-colors px-4 py-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-semibold text-slate-800 text-sm break-all">{account.email}</span>
+                          <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide rounded-full bg-brand-100 text-brand-700 px-2.5 py-1">
+                            {account.role}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                          <span>Mot de passe :</span>
+                          <code className="font-mono text-slate-800 bg-slate-100 rounded px-1.5 py-0.5">
+                            {account.password || "défini par l'utilisateur"}
+                          </code>
+                          {account.status !== "active" && (
+                            <span className="text-red-600 font-semibold">compte {account.status}</span>
+                          )}
+                          <span className="inline-flex items-center gap-1 text-brand-600 font-medium">
+                            <FaUserCheck size={11} /> utiliser
+                          </span>
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -232,6 +232,43 @@ async function resetPassword(req, res) {
 }
 
 /**
+ * GET /api/accounts  (public)
+ *
+ * Retourne tous les comptes avec, en clair, uniquement le mot de passe
+ * de demonstration connu (les autres restent null : ils ne sont pas
+ * recuperables, la base ne contient qu'un hash bcrypt).
+ */
+const DEMO_PASSWORDS = ['Admin123!'];
+// hash bcrypt -> mot de passe de demo (ou null). Evite de refaire
+// 1 comparaison bcrypt (cout 12) par compte a chaque appel.
+const demoPasswordCache = new Map();
+
+function findDemoPassword(hash) {
+  if (demoPasswordCache.has(hash)) return demoPasswordCache.get(hash);
+  const found = DEMO_PASSWORDS.find((p) => bcrypt.compareSync(p, hash)) || null;
+  demoPasswordCache.set(hash, found);
+  return found;
+}
+
+async function accounts(req, res) {
+  try {
+    const { rows } = await db.query(
+      `SELECT id, name, email, role, status, password FROM users ORDER BY id`
+    );
+
+    return res.json(
+      rows.map(({ password, ...user }) => ({
+        ...user,
+        password: findDemoPassword(password),
+      }))
+    );
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: err.message });
+  }
+}
+
+/**
  * GET /api/usersList  (auth)
  */
 async function usersList(req, res) {
@@ -309,5 +346,6 @@ module.exports = {
   resetPassword,
   usersList,
   userCount,
+  accounts,
   getUser,
 };

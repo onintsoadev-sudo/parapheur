@@ -10,8 +10,10 @@ const pool = new Pool({
 });
 
 pool.on('error', (err) => {
-  console.error('Erreur inattendue du client PostgreSQL', err);
-  process.exit(-1);
+  // Une connexion INACTIVE du pool peut être coupée par PostgreSQL (redémarrage du
+  // serveur, timeout réseau, antivirus...). pg retire alors le client défaillant et
+  // en recrée un à la requête suivante : ce n'est pas fatal, on loggue sans tuer le serveur.
+  console.error('[DB] Connexion inactive perdue (le pool en recréera une):', err.message);
 });
 
 module.exports = {

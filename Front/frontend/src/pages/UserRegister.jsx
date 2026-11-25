@@ -5,8 +5,20 @@ import { toast} from "react-toastify";
 import { Oval } from "react-loader-spinner";
 import "react-toastify/dist/ReactToastify.css";
 
+const EMPTY_FORM = {
+  status: 'active',
+  name: '',
+  email: '',
+  im: '',
+  id_dir: '',
+  id_serv: '',
+  role: '',
+  password: '',
+  password_confirmation: '',
+};
+
 function UserRegister() {
-  const [formData, setFormData] = useState({status:'active'});
+  const [formData, setFormData] = useState({ ...EMPTY_FORM });
   const [services, setServices] = useState([])
   const [isLoading, setIsLoading] = useState(false);
   const [servLoading, setServLoading] = useState(false)
@@ -22,48 +34,42 @@ function UserRegister() {
   
 
   //recupere dynamiquement la liste de services par rapport a la direction
-  const getServices = async () => {
-    setServLoading(true)
-    try{
-   await axiosRequest
-      .get(`/services/${formData?.id_dir}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Access-Control-Allow-Origin": "http://127.0.0.1:8000/api",
-        },
-      })
-      .then(({ data }) => setServices(data))
-      .then(() => setServLoading(false))
-      .catch((err) => console.log(err))
-      .finally(() => setServLoading(false))
-    }catch(err){
-      toast.error("Verifiez votre connexion internet")
+  const getServices = async (idDir) => {
+    if (!idDir) {
+      setServices([]);
+      return;
     }
- 
+    setServLoading(true);
+    try {
+      const { data } = await axiosRequest.get(`/services/${idDir}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setServices(data);
+    } catch (err) {
+      setServices([]);
+      toast.error(err?.response?.data?.message || "Impossible de charger les services");
+    } finally {
+      setServLoading(false);
+    }
   };
 
     //recuperation de la liste de Direction
     const getDir = async () => {
       setWaiting(true);
-  try{
-      await axiosRequest
-        .get("/dir", {
-          headers: { "Access-Control-Allow-Origin": "http://127.0.0.1:8000" },
-        })
-        .then(({ data }) => setDirs(data))
-        .then(() => setWaiting(false))
-  
-        .catch((err) => console.log(err).finally(() => setWaiting(false)));
-  }catch(err){
-    toast.error("Verifiez votre connexion internet")
+  try {
+      const { data } = await axiosRequest.get("/dir");
+      setDirs(data);
+  } catch (err) {
+      toast.error(err?.response?.data?.message || "Impossible de charger les directions");
+  } finally {
+      setWaiting(false);
   }
 
     };
 
   useEffect(() => {
-    getServices()    
-   
-  }, [formData?.id_dir]);
+    getServices(formData.id_dir);
+  }, [formData.id_dir]);
 
   useEffect(() => {
     getDir()
@@ -74,31 +80,55 @@ function UserRegister() {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    setFormData((formData) => ({ ...formData, [name]: value }));
+    // Changer de direction invalide le service deja choisi
+    setFormData((formData) =>
+      name === "id_dir"
+        ? { ...formData, id_dir: value, id_serv: "" }
+        : { ...formData, [name]: value }
+    );
   };
 
   const submit = async (e) => {
-    try{
-      setIsLoading(true);
     e.preventDefault();
-    await axiosRequest
-      .post("/register", formData, {
+
+    // Memes champs obligatoires que le backend : evite un 422 opaque
+    if (!formData.name || !formData.email || !formData.im) {
+      toast.error("Le nom, l'email et l'immatricule sont obligatoires");
+      return;
+    }
+    if (!formData.id_dir || !formData.id_serv) {
+      toast.error("Veuillez selectionner une direction et un service");
+      return;
+    }
+    if (!formData.role) {
+      toast.error("Veuillez selectionner un role");
+      return;
+    }
+    if (formData.password.length < 8) {
+      toast.error("Le mot de passe doit etre au minimum 8 caracteres");
+      return;
+    }
+    if (formData.password !== formData.password_confirmation) {
+      toast.error("Les mots de passe ne correspondent pas");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data } = await axiosRequest.post("/register", formData, {
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
-          "Access-Control-Allow-Origin": "http://127.0.0.1:8000/api",
         },
-      })
-      .then(({ data }) => toast.success(data.message))
-      .then(() => setFormData({status:"active", name:"", email:"", im:"", id_dir:"", id_serv:"", role:"", password:"", password_confirmation:""}))
-      .then(() => toast.info("l'email a ete bien envoyee"))
-      .then(() => setIsLoading(false))
-      .catch((err) => toast.error(err?.response?.data?.message))
-      .finally(() => setIsLoading(false));
-    }catch(err){
-      toast.error('Verifiez votre connexion internet')
+      });
+      toast.success(data.message);
+      setFormData({ ...EMPTY_FORM });
+      setServices([]);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Verifiez votre connexion internet");
+    } finally {
+      setIsLoading(false);
     }
-    
   };
 
   return (
@@ -174,10 +204,11 @@ function UserRegister() {
           ) : (
             <select
               onChange={handleChange}
+              value={formData.id_dir}
               className="text-slate-900 w-full p-2 rounded"
               name="id_dir"
               id="dir"
-              
+              required
             >
               <option value="">- Selectionner ici -</option>
               {dirs.map((d, index) => (
@@ -200,14 +231,17 @@ function UserRegister() {
                 ariaLabel="oval-loading"
                 wrapperStyle={{}}
                 wrapperClass=""/>):(       <select
-               
                 onChange={handleChange}
-                // value={formData?.id_serv}
+                value={formData.id_serv}
                 name="id_serv"
                 id="serv"
+                disabled={!formData.id_dir}
+                required
                 className="w-full p-3 text-slate-900 bg-gray-50 rounded-xl border-slate-300 border-2 focus:ring-brand-400"
               >
-                <option value=''>Selectionner un service</option>
+                <option value=''>
+                  {formData.id_dir ? "Selectionner un service" : "Choisissez d'abord une direction"}
+                </option>
                 {
                     services.map((serv, index) =><option key={index} value={serv.s_id}>{serv.nom_serv}</option>)
                 }
@@ -225,8 +259,9 @@ function UserRegister() {
               </label>
               <select
                 onChange={handleChange}
-                value={formData?.role}
+                value={formData.role}
                 name="role"
+                required
                 className="w-full p-3 text-slate-900 bg-gray-50 rounded-xl border-slate-300 border-2 focus:ring-brand-400"
               >
                 <option value="">- Selectionner ici -</option>
