@@ -64,9 +64,14 @@ async function destroy(req, res) {
 /** GET /api/services/:id_dir */
 async function getListOfServByDirection(req, res) {
   try {
+    const id_dir = Number.parseInt(req.params.id_dir, 10);
+    if (Number.isNaN(id_dir)) {
+      return res.status(422).json({ message: 'Identifiant de direction invalide' });
+    }
+
     const { rows } = await db.query(
       'SELECT * FROM servs WHERE dir_id = $1 ORDER BY s_id',
-      [req.params.id_dir]
+      [id_dir]
     );
     return res.json(rows);
   } catch (err) {

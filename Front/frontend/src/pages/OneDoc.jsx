@@ -75,11 +75,16 @@ function OneDoc() {
         getOneDoc()
     }, [])
     
-    //appel de getServs
+    //appel de getServs : attendre que l'utilisateur (et son id_dir) soit chargé
     useEffect(() => {
+        if (!user?.id_dir) return
         getServs()
+    }, [user?.id_dir])
+
+    //les directions ne dépendent pas de l'utilisateur
+    useEffect(() => {
         getDir()
-    }, [user])
+    }, [])
     const handleChange = (e) => {
         const {name, value} = e.target
         setFormData((formData) => ({...formData, [name]:value}))
@@ -97,25 +102,56 @@ function OneDoc() {
     }
     const submit =async (e) => {
         e.preventDefault()
-        let data
-        if(formData.type == 'transfert'){
-            data = {...formData, courrier_id:id_doc, user_id:user.id, status:"non reçu",current_trans_id:0 ,description:doc.motif, transfere:"non", current_trans_id_dir:user.id_dir, ref_initial:doc.chrono}
-        }else{
-           data = {...formData, courrier_id:id_doc, user_id:user.id, status:"non reçu", ...propr, current_trans_id:0, description:doc.motif, transfere:"non", current_trans_id_dir:user.id_dir, ref_initial:doc.chrono}
+
+        if(!user?.id || !user?.id_dir){
+          toast.error("Votre profil n'est pas encore chargé, veuillez réessayer")
+          return
+        }
+        if(!doc?.chrono){
+          toast.error("Courrier introuvable")
+          return
+        }
+        if(!formData.type){
+          toast.error("Veuillez choisir le type de mouvement")
+          return
+        }
+
+        // Un seul des deux champs cible est renseigné ; l'autre vaut "none".
+        const servId = formData.serv_id || "none"
+        const dgId = formData.id_dg || "none"
+
+        if(formData.type === 'transfert' && servId === "none" && dgId === "none"){
+          toast.error("Veuillez choisir un service ou une direction")
+          return
+        }
+
+        // Le Chrono est obligatoire côté backend : on retombe sur la référence
+        // du courrier s'il n'a pas été saisi.
+        const refPropre = String(formData.ref_propre || doc.chrono).trim()
+
+        const data = {
+          ...formData,
+          ...(formData.type === 'recuperation' ? propr : {}),
+          ref_propre: refPropre,
+          serv_id: servId,
+          id_dg: dgId,
+          courrier_id: id_doc,
+          user_id: user.id,
+          status: "non reçu",
+          current_trans_id: 0,
+          description: doc.motif || "",
+          transfere: "non",
+          current_trans_id_dir: user.id_dir,
+          ref_initial: doc.chrono,
         }
 
         try{
-                    await axiosRequest.post('/transDoc', data, {headers:{Authorization:`Bearer ${token}`, "Access-Control-Allow-Origin":"http://127.0.0.1:8000"}})
-          .then(({data}) => toast.success(data.message))
-          .then(() =>  navigate('/sp'))
-          .catch(({response}) => toast.error(response.data.message))
+          const { data: response } = await axiosRequest.post('/transDoc', data, {headers:{Authorization:`Bearer ${token}`, "Access-Control-Allow-Origin":"http://127.0.0.1:8000"}})
+          toast.success(response.message)
+          navigate('/sp')
         }catch(err){
-          toast.error("Verifiez votre connexion internet")
+          toast.error(err?.response?.data?.message || "Verifiez votre connexion internet")
         }
-
-        
-   
-
     }
 
   
@@ -239,6 +275,7 @@ function OneDoc() {
             onChange={handleChange}
             className="text-slate-900 w-full p-2 rounded"
             name="serv_id"
+                    required={formData.type === 'transfert'}
             id="services"
           >
             <option value="">- Selectionner ici -</option>
@@ -257,6 +294,7 @@ function OneDoc() {
             className="text-slate-900 w-full p-2 rounded"
             name="type"
             id="type"
+            required
           >
             <option value="">- Selectionner ici -</option>
             <option value="transfert">Transfert</option>
@@ -301,6 +339,7 @@ function OneDoc() {
             onChange={handleChange}
             className="text-slate-900 w-full p-2 rounded"
             name="serv_id"
+                    required={formData.type === 'transfert'}
             id="services"
           >
             <option value="">- Selectionner ici -</option>
@@ -334,6 +373,7 @@ function OneDoc() {
                     onChange={handleChange}
                     className="text-slate-900 w-full p-2 rounded"
                     name="serv_id"
+                    required={formData.type === 'transfert'}
                     id="services"
                   >
                     <option value="">- Selectionner ici -</option>
@@ -358,6 +398,7 @@ function OneDoc() {
                     onChange={handleChange}
                     className="text-slate-900 w-full p-2 rounded"
                     name="id_dg"
+                    required={formData.type === 'transfert'}
                     id="dg"
                   >
                     <option value="">- Selectionner ici -</option>
@@ -373,7 +414,7 @@ function OneDoc() {
           </label>
           <input
             type="text"
-            value={formData?.chrono}
+            value={formData?.ref_propre ?? ""}
             onChange={handleChange}
             placeholder='Chronologie'
             id="Chrono"

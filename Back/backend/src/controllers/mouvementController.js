@@ -20,8 +20,18 @@ async function makeMovement(req, res) {
       propr, description, transfere, serv_id, current_trans_id, id_dg, current_trans_id_dir,
     } = req.body;
 
-    if (!ref_initial || !ref_propre || !courrier_id || !user_id || !type || !status || !description || !transfere || !serv_id || !current_trans_id || !id_dg || !current_trans_id_dir) {
-      return res.status(422).json({ message: 'Champs requis manquants' });
+    // current_trans_id vaut 0 pour un premier transfert : 0 est une valeur
+    // valide, il ne faut donc pas le traiter comme un champ manquant.
+    const required = {
+      ref_initial, ref_propre, courrier_id, user_id, type, status,
+      description, transfere, serv_id, id_dg, current_trans_id, current_trans_id_dir,
+    };
+    const missing = Object.entries(required)
+      .filter(([, value]) => value === undefined || value === null || value === '')
+      .map(([key]) => key);
+
+    if (missing.length > 0) {
+      return res.status(422).json({ message: `Champs requis manquants : ${missing.join(', ')}` });
     }
 
     await db.query(

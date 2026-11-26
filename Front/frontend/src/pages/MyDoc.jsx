@@ -263,28 +263,28 @@ const HistoryData = ({ history, index, length, all }) => {
             <h3 class="text-xl font-bold text-slate-900 before:mb-2 before:block before:font-mono before:text-sm before:text-slate-500 capitalize">
               {history.type + " - " + history.created_at}
             </h3>
-            <li>
+            <div>
               <span className="underline">Vers</span>: {history.nom_serv??history.nom_dir}
-            </li>
-            <li>
+            </div>
+            <div>
               <span className="underline">Porte</span>: {history.porte_serv??history.porte_dir}
-            </li>
-            <li>
+            </div>
+            <div>
               <span className="underline">Reference Initial</span>:{" "}
               {history.ref_initial}
-            </li>
-            <li>
+            </div>
+            <div>
               <span className="underline">Chrono</span>: {history.ref_propre}
-            </li>
+            </div>
 
             {history.type == "recuperation" && (
-              <li>
+              <div>
                 <span className="underline">Recupere Par</span>: {history.propr}
-              </li>
+              </div>
             )}
-            <li>
+            <div>
               <span className="underline">Declenchee Par</span>: {history.name}
-            </li>
+            </div>
             <h4 id={length  == index + 1?"current":""} class="mt-2 text-base text-slate-700"> {history.description}</h4>
           </div>
         )}
