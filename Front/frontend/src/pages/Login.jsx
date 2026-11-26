@@ -25,6 +25,8 @@ function Login() {
   };
 
   const getUser = async () => {
+    // Sans token, inutile d'appeler /api/user (cela renvoyait un 401 dans la console)
+    if (!token) return;
     try {
       await axiosRequest
         .get("/user", {

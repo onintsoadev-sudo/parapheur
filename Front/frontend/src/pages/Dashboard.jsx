@@ -241,13 +241,18 @@ function Dashboard() {
     return <path d={getPath(x, y, width, height)} stroke="none" fill={fill} />;
   };
 
-  // Filtrer les courriers par direction par date par période
+  // Filtrer les courriers par direction par date par période.
+  // Le backend renvoie [nom_dir, courriers[], recus (nombre), nonRecus (nombre)] :
+  // seuls les courriers sont un tableau, les deux derniers sont des compteurs.
   const docByDirectionByDateByPeriod = (allOfDocByPeriod || []).map((docs) => {
+    const targetMonth = currentDate || allDoc[allDoc.length - 1]?.created_at?.substring(0, 7);
     return [
       docs[0],
-      docs[1]?.filter(dc => dc?.created_at?.substring(0, 7) === (currentDate ? currentDate : allDoc[allDoc.length - 1]?.created_at?.substring(0, 7))),
-      docs[2]?.filter(dc => dc?.created_at?.substring(0, 7) === (currentDate ? currentDate : allDoc[allDoc.length - 1]?.created_at?.substring(0, 7))),
-      docs[3]?.filter(dc => dc?.created_at?.substring(0, 7) === (currentDate ? currentDate : allDoc[allDoc.length - 1]?.created_at?.substring(0, 7)))
+      Array.isArray(docs[1])
+        ? docs[1].filter(dc => dc?.created_at?.substring(0, 7) === targetMonth)
+        : [],
+      docs[2] ?? 0,
+      docs[3] ?? 0
     ];
   });
 

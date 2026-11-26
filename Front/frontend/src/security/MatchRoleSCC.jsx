@@ -6,7 +6,7 @@ function MatchRoleSCC({children}) {
     const {user} = useContext(userContext)
     const navigate = useNavigate()
     useEffect(() => {
-        if(user.role !== 'scc' && user.role !== 'admin'){
+        if(user.role && user.role !== 'scc' && user.role !== 'admin'){
             navigate('/login')
         }
     }, [])

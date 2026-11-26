@@ -1,13 +1,27 @@
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import Aside from "../components/admin/Aside";
 import Header from "../components/admin/Header";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import AdminProtection from "../components/admin/AdminProtection";
+import { userContext } from "../components/ContextWrapper";
+import axiosRequest from "../axiosClient/axiosClient";
 
 function Admin() {
   const [show, setShow] = useState(false);
+  const { setUser } = useContext(userContext);
+
+  // Au rechargement de la page, le contexte est vide : on recharge l'admin
+  // courant pour que AdminProtection/Header disposent de son rôle.
+  useEffect(() => {
+    const token = localStorage.getItem("ACCESS_TOKEN");
+    if (!token) return;
+    axiosRequest
+      .get("/user", { headers: { Authorization: `Bearer ${token}` } })
+      .then(({ data }) => setUser(data))
+      .catch(() => {});
+  }, [setUser]);
 
   return (
     <>

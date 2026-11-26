@@ -51,10 +51,9 @@ function SccDirServDg() {
     await axiosRequest.post('/serv', formDataServ, {headers:{Accept:'application/json', "Access-Control-Allow-Origin":"http://127.0.0.1:8000/api"}})
     .then(({data}) => toast.success(data.message))
     .then(() => setIsLoadingServ(false))
-        .then(() => setFormDataDir({nom_serv:"", dir_id:"", porte_serv:""}))
+        .then(() => setFormDataServ({nom_serv:"", dir_id:"", porte_serv:""}))
     .catch((err) => toast.error(err?.response?.data?.message))
     .finally(() => setIsLoadingServ(false))
-    setFormDataServ({})
   }
 
 
@@ -84,9 +83,11 @@ function SccDirServDg() {
         headers: { "Access-Control-Allow-Origin": "http://127.0.0.1:8000" },
       })
       .then(({ data }) => setDg(data))
-      .then(() => setIsLoadingDg(false))
       .catch((err) => console.log(err))
-      .finally(() => setIsLoadingDg(false))
+      .finally(() => {
+        setIsLoadingDg(false);
+        setWaiting(false);
+      })
     
   };
 
@@ -99,12 +100,8 @@ function SccDirServDg() {
         headers: { "Access-Control-Allow-Origin": "http://127.0.0.1:8000" },
       })
       .then(({ data }) => setDir(data))
-      .then(() => setWaiting(false))
-
-      .catch((err) => console.log(err)
+      .catch((err) => console.log(err))
       .finally(() => setWaiting(false))
-
-      )
   };
 
   useEffect(() => {

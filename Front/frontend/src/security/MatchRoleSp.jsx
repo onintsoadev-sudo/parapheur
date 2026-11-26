@@ -6,7 +6,9 @@ function MatchRoleSp({children}) {
     const {user} = useContext(userContext)
     const navigate = useNavigate()
     useEffect(() => {
-        if(user.role !== 'sp'){
+        // On attend que /user ait répondu (role défini) avant de juger :
+        // sinon un simple rechargement de page renvoie vers /login.
+        if(user.role && user.role !== 'sp'){
             navigate('/login')
         }
     }, [])

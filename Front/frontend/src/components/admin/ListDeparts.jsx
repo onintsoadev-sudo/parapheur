@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { FaEdit, FaTrash } from "react-icons/fa";
-import axios from "axios";
+import axiosRequest from "../../axiosClient/axiosClient";
+import { toast } from "react-toastify";
 import { Link } from "react-router-dom";
 
 function ListDeparts() {
@@ -8,46 +9,36 @@ function ListDeparts() {
   const [data, setData] = useState({ services: [], directions: [], dg: [] });
   const [showModal, setShowModal] = useState(false);
   const [editData, setEditData] = useState();
-  
-  const [nom, setNom] = useState({})
-  const [porte, setPorte] = useState({})
-  const [refresh, setRefresh] = useState()
-  const [id, setId] = useState()
-  const portes = useRef()
-  const noms = useRef()
-  const getId = (di) => {
-    setId(di)
-  }
 
+  const [refresh, setRefresh] = useState(false);
+  const portes = useRef();
+  const noms = useRef();
 
-
-  const handleNom = (e) => {
-
-
-  const {name, value} = e.target
-    setNom((values) => ({...values, [name]:value}))
-  }
-
-    const handlePorte = (e) => {
-  const {name, value} = e.target
-    setPorte((values) => ({...values, [name]:value}))
-  }
-
-
-
+  // Récupère les trois niveaux de l'organisation depuis le backend
   const getMixte = async () => {
-    await axios
-      .get("http://localhost:8000/api/mixte", {
-        headers: { "Access-Control-Allow-Origin": "http://localhost:8000" },
-      })
-      .then(({ data }) => setData(data));
+    try {
+      const [dgRes, dirRes, servRes] = await Promise.all([
+        axiosRequest.get("/dg"),
+        axiosRequest.get("/dir"),
+        axiosRequest.get("/serv"),
+      ]);
+      setData({
+        dg: Array.isArray(dgRes.data) ? dgRes.data : [],
+        directions: Array.isArray(dirRes.data) ? dirRes.data : [],
+        services: Array.isArray(servRes.data) ? servRes.data : [],
+      });
+    } catch (err) {
+      toast.error(
+        err?.response?.data?.message || "Impossible de charger les départements"
+      );
+    }
   };
 
   useEffect(() => {
     getMixte();
   }, [refresh]);
 
-  const currentData = data[activeTab];
+  const currentData = data[activeTab] || [];
 
   const getTabLabel = () => {
     switch (activeTab) {
@@ -62,6 +53,9 @@ function ListDeparts() {
     }
   };
 
+  const getItemId = (item) =>
+    item?.dg_id ?? item?.d_id ?? item?.s_id;
+
   const handleEditClick = (item) => {
     setEditData(item);
     setShowModal(true);
@@ -72,19 +66,57 @@ function ListDeparts() {
     setEditData(null);
   };
 
- 
   const submitData = async (e) => {
-    
-    e.preventDefault()
-    await axios.put(`http://localhost:8000/api/u${activeTab==='dg'? 'dg':activeTab==='directions'?'dir':'serv'}/${id}`,{nom_dg:noms.current?.value, nom_dir:noms.current?.value, nom_serv:noms.current?.value, porte_dir:portes.current?.value, porte_serv:portes.current?.value}, {headers:{'Access-Control-Allow-Origin':'http://localhost:8000'}}).
-    then(() => setShowModal(false))
-    .then(() => setRefresh((refresh) => !refresh))
-  }
+    e.preventDefault();
+    const id = getItemId(editData);
+    if (!id) return;
 
-  const deletes = async (ids) => {
-    await axios.delete(`http://localhost:8000/api/del${activeTab==='dg'? 'dg':activeTab==='directions'?'dir':'serv'}/${ids}`,{headers:{'Access-Control-Allow-Origin':'http://localhost:8000'}}).then(()=>setRefresh((refresh) => !refresh))
+    let endpoint;
+    let payload;
+    if (activeTab === "dg") {
+      endpoint = `/dg/${id}`;
+      payload = { nom_dg: noms.current?.value };
+    } else if (activeTab === "directions") {
+      endpoint = `/dir/${id}`;
+      payload = {
+        nom_dir: noms.current?.value,
+        porte_dir: portes.current?.value,
+      };
+    } else {
+      endpoint = `/serv/${id}`;
+      payload = {
+        nom_serv: noms.current?.value,
+        porte_serv: portes.current?.value,
+      };
+    }
 
-  }
+    try {
+      await axiosRequest.put(endpoint, payload);
+      toast.success(`${getTabLabel()} modifiée avec succès`);
+      closeModal();
+      setRefresh((value) => !value);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Erreur lors de la modification");
+    }
+  };
+
+  const deletes = async (id) => {
+    if (!id) return;
+    const endpoint =
+      activeTab === "dg"
+        ? `/dg/${id}`
+        : activeTab === "directions"
+        ? `/dir/${id}`
+        : `/serv/${id}`;
+
+    try {
+      await axiosRequest.delete(endpoint);
+      toast.success(`${getTabLabel()} supprimée avec succès`);
+      setRefresh((value) => !value);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Erreur lors de la suppression");
+    }
+  };
 
   return (
     <>
@@ -112,7 +144,10 @@ function ListDeparts() {
 
         {/* Bouton Ajouter */}
         <div className="flex justify-end mb-4">
-          <Link to={'/admin/sccservdirdg'} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-500 rounded-2xl hover:bg-brand-600">
+          <Link
+            to={"/admin/sccservdirdg"}
+            className="flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-500 rounded-2xl hover:bg-brand-600"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -146,7 +181,7 @@ function ListDeparts() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
               {currentData.map((item, index) => (
-                <tr key={item.s_id ?? item.d_id ?? item.dg_id}>
+                <tr key={getItemId(item) ?? index}>
                   <td className="px-6 py-3 text-sm text-slate-700">{index + 1}</td>
                   <td className="px-6 py-3 text-sm text-slate-700">
                     {item.nom_dg ?? item.nom_dir ?? item.nom_serv}
@@ -161,7 +196,10 @@ function ListDeparts() {
                     >
                       <FaEdit className="mr-1" /> Modifier
                     </button>
-                    <button onClick={() => deletes(item?.dg_id??item?.d_id??item?.s_id)} className="inline-flex items-center px-3 py-1 text-white bg-red-500 rounded hover:bg-red-600">
+                    <button
+                      onClick={() => deletes(getItemId(item))}
+                      className="inline-flex items-center px-3 py-1 text-white bg-red-500 rounded hover:bg-red-600"
+                    >
                       <FaTrash className="mr-1" /> Supprimer
                     </button>
                   </td>
@@ -193,14 +231,19 @@ function ListDeparts() {
                   Nom {getTabLabel()}
                 </label>
                 <input
-                  name={activeTab==='dg'?'nom_dg':activeTab==='directions'?'nom_dir':'nom_serv'}
+                  name={
+                    activeTab === "dg"
+                      ? "nom_dg"
+                      : activeTab === "directions"
+                      ? "nom_dir"
+                      : "nom_serv"
+                  }
                   type="text"
                   ref={noms}
                   defaultValue={
                     editData?.nom_serv ?? editData?.nom_dir ?? editData?.nom_dg
                   }
-                  onChange={handleNom}
-                  className="w-full px-3 py-2 border text-black  rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full px-3 py-2 border text-black rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
                 />
               </div>
 
@@ -211,14 +254,13 @@ function ListDeparts() {
                     Porte
                   </label>
                   <input
-                  ref={portes}
-                    name={activeTab ==='directions'?'porte_dir':"porte_serv"}
+                    ref={portes}
+                    name={activeTab === "directions" ? "porte_dir" : "porte_serv"}
                     type="text"
                     defaultValue={editData?.porte_serv ?? editData?.porte_dir}
-                    onChange={handlePorte}
                     className="w-full px-3 py-2 text-black border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
                   />
-                  </div>
+                </div>
               )}
 
               {/* Boutons */}
@@ -231,7 +273,6 @@ function ListDeparts() {
                   Annuler
                 </button>
                 <button
-                onClick={() => getId(editData?.dg_id??editData?.d_id??editData?.s_id)}
                   type="submit"
                   className="px-4 py-2 text-sm text-white bg-brand-500 rounded hover:bg-brand-600"
                 >

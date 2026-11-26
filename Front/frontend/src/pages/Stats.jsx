@@ -224,8 +224,8 @@ function Stats() {
         return [
           docs?.[0],
           docs?.[1]?.filter((dc) => dc?.created_at?.substring(0, 7) === targetMonth) || [],
-          docs?.[2]?.filter((dc) => dc?.created_at?.substring(0, 7) === targetMonth) || [],
-          docs?.[3]?.filter((dc) => dc?.created_at?.substring(0, 7) === targetMonth) || [],
+          docs?.[2] ?? 0,
+          docs?.[3] ?? 0,
         ];
       })
     : [];
@@ -240,8 +240,8 @@ function Stats() {
         return [
           docs?.[0],
           docs?.[1]?.filter((dc) => dc?.created_at?.substring(0, 7) === targetMonth) || [],
-          docs?.[2]?.filter((dc) => dc?.created_at?.substring(0, 7) === targetMonth) || [],
-          docs?.[3]?.filter((dc) => dc?.created_at?.substring(0, 7) === targetMonth) || [],
+          docs?.[2] ?? 0,
+          docs?.[3] ?? 0,
         ];
       })
     : [];
@@ -453,9 +453,13 @@ function Stats() {
                   {" "}
                   {d[1]?.length || 0}
                   {"/"}
-                  <span className="text-green-500">{d[2]?.length || 0}</span>
+                  <span className="text-green-500">
+                    {Array.isArray(d[2]) ? d[2].length : d[2] || 0}
+                  </span>
                   {"/"}
-                  <span className="text-red-500">{d[3]?.length || 0}</span>
+                  <span className="text-red-500">
+                    {Array.isArray(d[3]) ? d[3].length : d[3] || 0}
+                  </span>
                 </span>
               </div>
               <div className="mt-2 text-sm text-gray-400">Direction {d[0]}</div>

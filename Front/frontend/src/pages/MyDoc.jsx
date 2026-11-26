@@ -95,7 +95,7 @@ function MyDoc() {
           <input
             onChange={handleChange}
             name="ref"
-            value={search?.ref}
+            value={search?.ref ?? ""}
             type="text"
             className="px-2 py-3 w-full border-2 border-gray-500 text-slate-900 shadow-sm focus:ring-brand-400 rounded-3xl"
             placeholder="la reference de votre dossier ici"
@@ -159,10 +159,10 @@ function MyDoc() {
                         Entrez une reference valide{" "}
                         <CgDanger className="inline w-5 h-5" />
                       </td>
-                    )}{" "}
+                    )}
                   </tr>
 
-                  {doc.chrono && (
+                  {doc?.chrono && (
                     <tr className="text-black">
                       <td colSpan={8} className="text-left lg:text-center ">
                         <button
@@ -197,15 +197,21 @@ const History = ({ loader, history, all }) => {
   return (
     <>
       {loader ? (
-        <Oval
-          visible={true}
-          height="30"
-          width="30"
-          color="blue"
-          ariaLabel="oval-loading"
-          wrapperStyle={{}}
-          wrapperClass=""
-        />
+        <tr>
+          <td colSpan={12} className="py-6 text-center">
+            <div className="flex justify-center">
+              <Oval
+                visible={true}
+                height="30"
+                width="30"
+                color="blue"
+                ariaLabel="oval-loading"
+                wrapperStyle={{}}
+                wrapperClass=""
+              />
+            </div>
+          </td>
+        </tr>
       ) : (
         <tr>
           <td

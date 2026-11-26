@@ -8,7 +8,7 @@ function MatchRoleAgent({children}) {
     
     //protection parole
     useEffect(() => {
-        if(user.role !== 'agent'){
+        if(user.role && user.role !== 'agent'){
             navigate('/login')
         }
     }, [])

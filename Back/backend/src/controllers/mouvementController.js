@@ -169,6 +169,19 @@ async function getListTransDocByService(req, res) {
 async function getListTransferedDocByService(req, res) {
   try {
     const id_serv = String(req.user.id_serv);
+    let perPage = 10;
+    if (req.query.lines) {
+      perPage = req.query.lines === 'all' ? 999999 : parseInt(req.query.lines, 10) || 10;
+    }
+    const page = parseInt(req.query.page || '1', 10);
+    const offset = (page - 1) * perPage;
+
+    const countRes = await db.query(
+      `SELECT COUNT(*) FROM mouvements WHERE serv_id = $1 AND transfere = 'oui'`,
+      [id_serv]
+    );
+    const total = parseInt(countRes.rows[0].count, 10);
+
     const { rows } = await db.query(
       `SELECT m.*, m.created_at AS mouvements_created_at,
               s.nom_serv, d.nom_dir, c.*, u.name AS user_name
@@ -178,10 +191,11 @@ async function getListTransferedDocByService(req, res) {
        JOIN courriers c ON c.c_id = m.courrier_id
        JOIN users u ON u.id = m.user_id
        WHERE m.serv_id = $1 AND m.transfere = 'oui'
-       ORDER BY m.created_at DESC`,
-      [id_serv]
+       ORDER BY m.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [id_serv, perPage, offset]
     );
-    return res.json(rows);
+    return res.json(paginate(rows, page, perPage, total));
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -193,6 +207,19 @@ async function getListTransferedDocByService(req, res) {
 async function getListTransferedDocToService(req, res) {
   try {
     const id_serv = String(req.user.id_serv);
+    let perPage = 10;
+    if (req.query.lines) {
+      perPage = req.query.lines === 'all' ? 999999 : parseInt(req.query.lines, 10) || 10;
+    }
+    const page = parseInt(req.query.page || '1', 10);
+    const offset = (page - 1) * perPage;
+
+    const countRes = await db.query(
+      `SELECT COUNT(*) FROM mouvements WHERE current_trans_id = $1 AND transfere = 'oui'`,
+      [id_serv]
+    );
+    const total = parseInt(countRes.rows[0].count, 10);
+
     const { rows } = await db.query(
       `SELECT m.*, m.created_at AS mouvements_created_at,
               s.nom_serv, d.nom_dir, c.*, u.name AS user_name
@@ -202,10 +229,11 @@ async function getListTransferedDocToService(req, res) {
        JOIN courriers c ON c.c_id = m.courrier_id
        JOIN users u ON u.id = m.user_id
        WHERE m.current_trans_id = $1 AND m.transfere = 'oui'
-       ORDER BY m.created_at DESC`,
-      [req.user.id_serv]
+       ORDER BY m.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [id_serv, perPage, offset]
     );
-    return res.json(rows);
+    return res.json(paginate(rows, page, perPage, total));
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -216,6 +244,18 @@ async function getListTransferedDocToService(req, res) {
  */
 async function moveServiceToSp(req, res) {
   try {
+    let perPage = 10;
+    if (req.query.lines) {
+      perPage = req.query.lines === 'all' ? 999999 : parseInt(req.query.lines, 10) || 10;
+    }
+    const page = parseInt(req.query.page || '1', 10);
+    const offset = (page - 1) * perPage;
+
+    const countRes = await db.query(
+      `SELECT COUNT(*) FROM mouvements WHERE type = 'transfert' AND transfere = 'non'`
+    );
+    const total = parseInt(countRes.rows[0].count, 10);
+
     const { rows } = await db.query(
       `SELECT m.*, m.created_at AS mouvements_created_at,
               s.nom_serv, c.*, u.name AS user_name
@@ -224,9 +264,11 @@ async function moveServiceToSp(req, res) {
        JOIN courriers c ON c.c_id = m.courrier_id
        JOIN users u ON u.id = m.user_id
        WHERE m.type = 'transfert' AND m.transfere = 'non'
-       ORDER BY m.created_at DESC`
+       ORDER BY m.created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [perPage, offset]
     );
-    return res.json(rows);
+    return res.json(paginate(rows, page, perPage, total));
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }

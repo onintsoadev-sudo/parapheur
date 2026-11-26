@@ -302,15 +302,15 @@ async function courrierNotLivred(req, res) {
 async function courrierNotLivredByPeriod(req, res) {
   try {
     const { start, end } = req.body || {};
+    const params = [];
+    let query = `SELECT * FROM courriers WHERE status = 'non reçu'`;
     if (start && end) {
-      const { rows } = await db.query(
-        `SELECT COUNT(*) FROM courriers WHERE status = 'non reçu'
-         AND created_at::date >= $1::date AND created_at::date <= $2::date`,
-        [start, end]
-      );
-      return res.json(parseInt(rows[0].count, 10));
+      params.push(start, end);
+      query += ' AND created_at::date >= $1::date AND created_at::date <= $2::date';
     }
-    return courrierNotLivred(req, res);
+    query += ' ORDER BY created_at DESC';
+    const { rows } = await db.query(query, params);
+    return res.json(rows);
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -328,15 +328,15 @@ async function courrierLivred(req, res) {
 async function courrierLivredByPeriod(req, res) {
   try {
     const { start, end } = req.body || {};
+    const params = [];
+    let query = `SELECT * FROM courriers WHERE status = 'reçu'`;
     if (start && end) {
-      const { rows } = await db.query(
-        `SELECT COUNT(*) FROM courriers WHERE status = 'reçu'
-         AND created_at::date >= $1::date AND created_at::date <= $2::date`,
-        [start, end]
-      );
-      return res.json(parseInt(rows[0].count, 10));
+      params.push(start, end);
+      query += ' AND created_at::date >= $1::date AND created_at::date <= $2::date';
     }
-    return courrierLivred(req, res);
+    query += ' ORDER BY created_at DESC';
+    const { rows } = await db.query(query, params);
+    return res.json(rows);
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -354,31 +354,52 @@ async function graph(req, res) {
   }
 }
 
+/**
+ * Regroupe les courriers par service sous la forme attendue par le front :
+ *   [nom_serv, [courrier, courrier, ...], ...]
+ */
+async function getDocsGroupedByService({ dirId, start, end }) {
+  const params = [];
+  let joinCond = '';
+  if (start && end) {
+    params.push(start, end);
+    joinCond = ` AND c.created_at::date >= $${params.length - 1}::date AND c.created_at::date <= $${params.length}::date`;
+  }
+
+  let where = '';
+  if (dirId) {
+    params.push(dirId);
+    where = ` WHERE s.dir_id = $${params.length}`;
+  }
+
+  const { rows } = await db.query(
+    `SELECT s.s_id, s.nom_serv, c.*
+     FROM servs s
+     LEFT JOIN users u ON u.id_serv = s.s_id
+     LEFT JOIN courriers c ON c.user_id = u.id${joinCond}
+     ${where}
+     ORDER BY s.nom_serv`,
+    params
+  );
+
+  const grouped = new Map();
+  for (const row of rows) {
+    if (!grouped.has(row.s_id)) grouped.set(row.s_id, [row.nom_serv, []]);
+    const entry = grouped.get(row.s_id);
+    if (row.c_id && !entry[1].some((doc) => doc.c_id === row.c_id)) {
+      const { s_id, nom_serv, ...doc } = row;
+      entry[1].push(doc);
+    }
+  }
+  return [...grouped.values()];
+}
+
 async function numberOfDocByService(req, res) {
   try {
     const { start, end, id_dir } = req.body || {};
     const dirId = id_dir || req.user?.id_dir;
-    let query = `
-      SELECT s.nom_serv, COUNT(c.c_id) AS total
-      FROM servs s
-      LEFT JOIN users u ON u.id_serv = s.s_id
-      LEFT JOIN courriers c ON c.user_id = u.id
-    `;
-    const params = [];
-    const conditions = [];
-    if (dirId) {
-      params.push(dirId);
-      conditions.push(`s.dir_id = $${params.length}`);
-    }
-    if (start && end) {
-      params.push(start, end);
-      conditions.push(`c.created_at::date >= $${params.length - 1}::date AND c.created_at::date <= $${params.length}::date`);
-    }
-    if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
-    query += ' GROUP BY s.s_id, s.nom_serv ORDER BY s.nom_serv';
-
-    const { rows } = await db.query(query, params);
-    return res.json(rows);
+    const data = await getDocsGroupedByService({ dirId, start, end });
+    return res.json(data);
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -386,14 +407,9 @@ async function numberOfDocByService(req, res) {
 
 async function numberOfDocByServiceNoFilter(req, res) {
   try {
-    const { rows } = await db.query(
-      `SELECT s.nom_serv, COUNT(c.c_id) AS total
-       FROM servs s
-       LEFT JOIN users u ON u.id_serv = s.s_id
-       LEFT JOIN courriers c ON c.user_id = u.id
-       GROUP BY s.s_id, s.nom_serv ORDER BY s.nom_serv`
-    );
-    return res.json(rows);
+    const { start, end } = req.body || {};
+    const data = await getDocsGroupedByService({ start, end });
+    return res.json(data);
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -436,37 +452,13 @@ async function numberOfDocByDirectionAdmin(req, res) {
   }
 }
 
+// Même format que countByDirectionAdmin : [nom_dir, liste, reçus, non reçus]
 async function numberOfDocByDirection(req, res) {
-  try {
-    const { rows } = await db.query(
-      `SELECT d.nom_dir, COUNT(c.c_id) AS total
-       FROM dirs d
-       LEFT JOIN courriers c ON c.dir_id = d.d_id
-       GROUP BY d.d_id, d.nom_dir ORDER BY d.nom_dir`
-    );
-    return res.json(rows);
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
-  }
+  return numberOfDocByDirectionAdmin(req, res);
 }
 
 async function numberOfDocByDirectionByPeriod(req, res) {
-  try {
-    const { start, end } = req.body || {};
-    if (!start || !end) return numberOfDocByDirection(req, res);
-
-    const { rows } = await db.query(
-      `SELECT d.nom_dir, COUNT(c.c_id) AS total
-       FROM dirs d
-       LEFT JOIN courriers c ON c.dir_id = d.d_id
-         AND c.created_at::date >= $1::date AND c.created_at::date <= $2::date
-       GROUP BY d.d_id, d.nom_dir ORDER BY d.nom_dir`,
-      [start, end]
-    );
-    return res.json(rows);
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
-  }
+  return numberOfDocByDirectionAdmin(req, res);
 }
 
 async function filterPeriodDate(req, res) {

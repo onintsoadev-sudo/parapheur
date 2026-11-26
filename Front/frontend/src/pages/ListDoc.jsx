@@ -105,7 +105,7 @@ const gotoPage = (page) => {
       <div className="relative">
               <span className="absolute inset-y-0 left-0 justify-start flex items-center pl-3">
             <svg className="w-full h-5 text-gray-400" viewBox="0 0 24 24" fill="none">
-                <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path>
             </svg>
         </span>
 
@@ -114,7 +114,7 @@ const gotoPage = (page) => {
       </div>
       <button onClick={fresh} className="flex items-center px-4 py-2 font-medium tracking-wide text-white capitalize transition-colors duration-300 transform bg-brand-600 rounded-2xl hover:bg-brand-500 focus:outline-none focus:ring focus:ring-blue-300 focus:ring-opacity-80">
     <svg className="w-5 h-5 mx-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+        <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
     </svg>
 
     <span className="mx-1">Rafraichir</span>
@@ -197,21 +197,26 @@ const gotoPage = (page) => {
               )} */}
             </tr>
           </thead>
-          {loader ? (
-            <Oval
-              visible={true}
-              height="30"
-              width="30"
-              color="blue"
-              ariaLabel="oval-loading"
-              wrapperStyle={{}}
-              wrapperClass="absolute left-[57%] z-50"
-            />
-          ) :(
-        
-          <tbody className="bg-white divide-y ">
-                <DocByDirection token={token} docsByDirection={filtered} showDocByOne={showDocByOne} updateLivre={updateLivre} setUpdateLivre={setUpdateLivre}/>
-          </tbody>)}
+          <tbody className="bg-white divide-y">
+            {loader ? (
+              <tr>
+                <td colSpan={12} className="px-4 py-8">
+                  <div className="flex justify-center">
+                    <Oval
+                      visible={true}
+                      height="30"
+                      width="30"
+                      color="blue"
+                      ariaLabel="oval-loading"
+                      wrapperStyle={{}}
+                    />
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              <DocByDirection token={token} docsByDirection={filtered} showDocByOne={showDocByOne} updateLivre={updateLivre} setUpdateLivre={setUpdateLivre} />
+            )}
+          </tbody>
         </table>
       </div>
     </>
